@@ -1,1 +1,302 @@
-exam_practice for TET
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>स्मार्ट क्विज - एक प्रश्न एक बार में</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .upload-section {
+            text-align: center;
+            padding: 40px 20px;
+            border: 2px dashed #3498db;
+            border-radius: 12px;
+            background-color: #ebf5fb;
+        }
+        input[type="file"] {
+            font-size: 16px;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        /* क्विज सेक्शन स्टाइल */
+        #quizSection, #resultSection {
+            display: none;
+        }
+        .header-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .question-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #1a252f;
+            line-height: 1.5;
+        }
+        .option {
+            display: block;
+            padding: 15px 20px;
+            margin: 12px 0;
+            background-color: #f8f9f9;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 17px;
+        }
+        .option:hover {
+            background-color: #ecf0f1;
+            border-color: #95a5a6;
+            transform: translateX(5px);
+        }
+        
+        /* सही और गलत उत्तर के लिए कलर्स */
+        .correct {
+            background-color: #d5f5e3 !important;
+            color: #1d8348 !important;
+            border-color: #2ecc71 !important;
+            font-weight: bold;
+        }
+        .wrong {
+            background-color: #fadbd8 !important;
+            color: #943126 !important;
+            border-color: #e74c3c !important;
+        }
+        .disabled {
+            pointer-events: none;
+        }
+
+        /* रिज़ल्ट सेक्शन */
+        .result-card {
+            text-align: center;
+            padding: 30px;
+        }
+        .result-score {
+            font-size: 48px;
+            color: #2ecc71;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .result-message {
+            font-size: 20px;
+            color: #7f8c8d;
+        }
+        .restart-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .restart-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="uploadSection" class="upload-section">
+        <h1>📝 स्मार्ट क्विज अपलोडर</h1>
+        <p>अपनी .txt फ़ाइल यहाँ अपलोड करें (जिसमें प्रश्न और उत्तर हों):</p>
+        <input type="file" id="fileInput" accept=".txt">
+    </div>
+
+    <div id="quizSection">
+        <div class="header-stats">
+            <span id="questionCount">प्रश्न: 1 / 10</span>
+            <span id="scoreDisplay">स्कोर: 0</span>
+            <span id="percentageDisplay">प्रतिशत: 0%</span>
+        </div>
+        <div id="questionContainer">
+            <!-- प्रश्न और विकल्प यहाँ आएंगे -->
+        </div>
+    </div>
+
+    <div id="resultSection" class="result-card">
+        <h1>🎉 क्विज समाप्त!</h1>
+        <div class="result-score" id="finalScoreText">0 / 0</div>
+        <div class="result-message" id="finalPercentageText">आपने 0% अंक प्राप्त किए हैं।</div>
+        <button class="restart-btn" onclick="location.reload()">नया पेपर अपलोड करें</button>
+    </div>
+</div>
+
+<script>
+    let questionsData = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    // फ़ाइल अपलोड हैंडलर
+    document.getElementById('fileInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            parseQuizData(text);
+        };
+        reader.readAsText(file);
+    });
+
+    // टेक्स्ट फ़ाइल से डेटा निकालना
+    function parseQuizData(text) {
+        questionsData = [];
+        const blocks = text.split(/\n\s*\n/);
+
+        blocks.forEach((block) => {
+            const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            if (lines.length >= 6) {
+                const questionText = lines[0];
+                const options = [lines[1], lines[2], lines[3], lines[4]];
+                const answerLine = lines.find(l => l.startsWith('उत्तर:') || l.startsWith('Answer:'));
+                
+                if (answerLine) {
+                    const correctAnswerLetter = answerLine.split(':')[1].trim().toUpperCase();
+                    questionsData.push({
+                        question: questionText,
+                        options: options,
+                        answer: correctAnswerLetter
+                    });
+                }
+            }
+        });
+
+        if (questionsData.length > 0) {
+            currentQuestionIndex = 0;
+            score = 0;
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('quizSection').style.display = 'block';
+            loadQuestion();
+        } else {
+            alert("फ़ाइल में कोई सही प्रश्न नहीं मिला। कृपया फॉर्मेट चेक करें।");
+        }
+    }
+
+    // स्क्रीन पर प्रश्न दिखाना
+    function loadQuestion() {
+        const qContainer = document.getElementById('questionContainer');
+        qContainer.innerHTML = ''; // पुराना साफ करें
+        
+        const currentQ = questionsData[currentQuestionIndex];
+
+        // टॉप बार अपडेट करें
+        const currentPercent = currentQuestionIndex === 0 ? 0 : Math.round((score / currentQuestionIndex) * 100);
+        document.getElementById('questionCount').innerText = `प्रश्न: ${currentQuestionIndex + 1} / ${questionsData.length}`;
+        document.getElementById('scoreDisplay').innerText = `स्कोर: ${score}`;
+        document.getElementById('percentageDisplay').innerText = `प्रतिशत: ${currentPercent}%`;
+
+        // प्रश्न टाइटल
+        const qTitle = document.createElement('div');
+        qTitle.className = 'question-title';
+        qTitle.innerText = currentQ.question;
+        qContainer.appendChild(qTitle);
+
+        // विकल्प बटन
+        currentQ.options.forEach(opt => {
+            const optDiv = document.createElement('div');
+            optDiv.className = 'option';
+            optDiv.innerText = opt;
+            const optLetter = opt.charAt(0).toUpperCase();
+
+            optDiv.onclick = function() {
+                // डबल क्लिक रोकने के लिए
+                const allOptions = qContainer.querySelectorAll('.option');
+                allOptions.forEach(o => o.classList.add('disabled'));
+
+                if (optLetter === currentQ.answer) {
+                    // सही उत्तर
+                    this.classList.add('correct');
+                    score++;
+                    updateTopBarRealtime();
+                    
+                    // सही होने पर 1 सेकंड बाद अगला प्रश्न
+                    setTimeout(() => {
+                        nextQuestion();
+                    }, 1000);
+                } else {
+                    // गलत उत्तर
+                    this.classList.add('wrong');
+                    updateTopBarRealtime();
+                    
+                    // सही उत्तर को हरा कर दें
+                    allOptions.forEach(o => {
+                        if (o.innerText.charAt(0).toUpperCase() === currentQ.answer) {
+                            o.classList.add('correct');
+                        }
+                    });
+
+                    // गलत होने पर 2 सेकंड बाद अगला प्रश्न (ताकि सही उत्तर पढ़ने का समय मिले)
+                    setTimeout(() => {
+                        nextQuestion();
+                    }, 2000);
+                }
+            };
+            qContainer.appendChild(optDiv);
+        });
+    }
+
+    // क्लिक करते ही तुरंत स्कोर अपडेट करने के लिए
+    function updateTopBarRealtime() {
+        // क्योंकि उत्तर दे दिया गया है, इसलिए कुल प्रश्नों में 1 जोड़कर प्रतिशत निकालते हैं
+        const currentPercent = Math.round((score / (currentQuestionIndex + 1)) * 100);
+        document.getElementById('scoreDisplay').innerText = `स्कोर: ${score}`;
+        document.getElementById('percentageDisplay').innerText = `प्रतिशत: ${currentPercent}%`;
+    }
+
+    // अगले प्रश्न पर जाना या रिज़ल्ट दिखाना
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questionsData.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    // अंत में फाइनल रिज़ल्ट दिखाना
+    function showResult() {
+        document.getElementById('quizSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'block';
+        
+        const finalPercent = Math.round((score / questionsData.length) * 100);
+        document.getElementById('finalScoreText').innerText = `${score} / ${questionsData.length}`;
+        document.getElementById('finalPercentageText').innerText = `आपका कुल प्रतिशत ${finalPercent}% रहा।`;
+    }
+</script>
+
+</body>
+</html>
